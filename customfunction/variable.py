@@ -1,24 +1,55 @@
-Class Variable:
-    Initialize(data, name=None):
-        Set self.data to data
-        Initialize grad, creator, and generation to None, None, and 0 respectively
-        Set self.name to name
+import numpy as np
 
-    Function set_creator(func):
-        Set self.creator to func
-        Set self.generation to func's generation + 1
+class Variable:
+    def __init__(self, data, name=None):
+        if data is not None:
+            if not isinstance(data, np.ndarray):
+                raise TypeError('{} is not supported'.format(type(data)))
 
-    Function cleargrad():
-        Set grad to None
+        self.data = data
+        self.grad = None
+        self.creator = None
+        self.generation = 0
+        self.name = name
 
-    Function backward():
-        If grad is None:
-            Initialize grad with ones of same shape as data
-        Create an empty list "funcs"
-        Add creator to "funcs"
-        While funcs is not empty:
-            Pop a function from funcs
-            Compute the backward gradients for function's outputs
-            Update the gradients for function's inputs
-            If input has a creator, add it to funcs
-            Print gradient if input has a name
+    def set_creator(self, func):
+        self.creator = func
+        self.generation = func.generation + 1
+
+    def cleargrad(self):
+        self.grad = None
+
+    def backward(self):
+        if self.grad is None:
+            self.grad = np.ones_like(self.data)
+
+        funcs = []
+        seen_set = set()
+
+        def add_func(f):
+            if f not in seen_set:
+                funcs.append(f)
+                seen_set.add(f)
+                funcs.sort(key=lambda x: x.generation)
+
+        add_func(self.creator)
+
+        while funcs:
+            f = funcs.pop()
+            gys = [output.grad for output in f.outputs]
+            gxs = f.backward(*gys)
+            if not isinstance(gxs, tuple):
+                gxs = (gxs,)
+
+            for x, gx in zip(f.inputs, gxs):
+                if x.grad is None:
+                    x.grad = gx
+                else:
+                    x.grad = x.grad + gx
+
+                if x.creator is not None:
+                    add_func(x.creator)
+
+                # Print gradient for each variable
+                if x.name:
+                    print(f"Gradient of {x.name}: {x.grad}")
