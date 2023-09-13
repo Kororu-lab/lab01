@@ -29,7 +29,7 @@ class ReLU(Function):
         return gx
 
 def relu(x):
-    return ReLU()(x)
+    return ReLU()(x) 
 
 
 class MeanSquaredError(Function):
